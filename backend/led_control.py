@@ -2,7 +2,6 @@ from gpiozero import LED, Button
 from time import sleep
 from random import random
 from random import uniform
-from signal import pause
 import threading
 
 
@@ -22,6 +21,7 @@ class LIGHT_SHOW(object):
     RANDOM_1 = 5
     RANDOM_2 = 6
     RANDOM_3 = 7
+    TEST = 100000
         
     def __setattr__(self, *_):
         pass
@@ -104,6 +104,9 @@ def light_show_worker(light_show_id):
     if light_show_id == LIGHT_SHOW.ALL_ON:
         light_show(light_show_id, [ 0xFF ], 1)
 
+    if light_show_id == LIGHT_SHOW.TEST:
+        light_show(light_show_id, [0xFF, 0x00 ], 3)
+        
     if light_show_id == LIGHT_SHOW.ALL_BLINKING:
         light_show(light_show_id, [ 0xFF, 0x00 ], FOREVER)
 
@@ -139,5 +142,3 @@ def light_show_worker(light_show_id):
 def start_light_show(index):
     t = threading.Thread(target=light_show_worker, args=(index,))
     t.start()
-
-pause()
