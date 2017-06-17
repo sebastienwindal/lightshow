@@ -106,11 +106,14 @@ def lcd_string(message,line):
   for i in range(LCD_WIDTH):
     lcd_byte(ord(message[i]),LCD_CHR)
 
-def main():
+def lcd_clear():
+  lcd_byte(0x01, LCD_CMD)  
+    
+#def main():
   # Main program block
 
   # Initialise display
-  lcd_init()
+#  lcd_init()
 
   #while True:
 
@@ -127,17 +130,7 @@ def main():
     #time.sleep(3)
 
 
-  lcd_string("> Hello Scott",LCD_LINE_1)
-  lcd_string("> GO SCOTLAND!",LCD_LINE_2)
+#  lcd_string("> Hello Scott",LCD_LINE_1)
+#  lcd_string("> GO SCOTLAND!",LCD_LINE_2)
 
-  pause()
-  
-if __name__ == '__main__':
-
-  try:
-    main()
-  except KeyboardInterrupt:
-    pass
-  finally:
-    lcd_byte(0x01, LCD_CMD)
-
+#  pause()
