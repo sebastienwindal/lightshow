@@ -12,7 +12,7 @@ light_show_str = ""
 
 def bottom_str():
   freq_str = str(frequency) + "Hz"
-  for i in xrange(0, 8-len(freq_str)):
+  for i in range(0, 8-len(freq_str)):
     freq_str += " "
   m = 0x80
   while m != 0:
@@ -23,11 +23,12 @@ def bottom_str():
     m >>= 1
   return freq_str
 
+###############################
+# LED events
   
 def light_show_started(light_show):
   global light_show_str
   light_show_str = light_show.pretty_description()
-
   
 def light_show_completed(light_show):
   global light_show_str
@@ -37,22 +38,38 @@ def light_show_completed(light_show):
 def light_show_frequency_changed(freq):
   global frequency
   frequency = freq
-
   
 def light_show_led_changed(m):
   global mask
   mask = m
-  
-  
+
+#####################################
+# REST server callback overrides
+
+def status_off_requested():
+  off_light_show = led_control.get_light_show(led_control.LIGHT_SHOW.OFF)
+  if off_light_show != None:
+    led_control.start_light_show(off_light_show.id)
+
+def status_manual_request():
+  manual_light_show = led_control.get_light_show(led_control.LIGHT_SHOW.MANUAL)
+  if manual_light_show != None:
+    led_control.start_light_show(manual_light_show.id)
+       
+
+####
+
 def lcd_worker():
   while True:
     lcd_control.lcd_string(bottom_str(), lcd_control.LCD_LINE_2)
     lcd_control.lcd_string(light_show_str, lcd_control.LCD_LINE_1)
     sleep(0.05)
 
+    
 def rest_worker():
   rest_server.server.run()
-    
+
+  
 def main():
   lcd_control.lcd_init()
 
@@ -62,6 +79,9 @@ def main():
   led_control.event_light_show_completed.append(light_show_completed)
   led_control.event_light_show_frequency_changed.append(light_show_frequency_changed)
   led_control.event_light_show_led_changed.append(light_show_led_changed)
+
+  rest_server.status_off_requested = status_off_requested
+  rest_server.status_manual_requested = status_manual_request
   
   t = threading.Thread(target=lcd_worker)
   t.daemon = True
@@ -80,6 +100,6 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     pass
   finally:
-    print "Goodbye"
+    print("Goodbye")
     lcd_control.lcd_clear()
 

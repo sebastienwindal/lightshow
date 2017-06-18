@@ -6,6 +6,7 @@ import threading
 import json
 import event
 from event import Event
+from enum import Enum
 
 leds = [ LED(4), LED(5), LED(6), LED(13), LED(16), LED(17), LED(27), LED(22) ]
 top_button = Button(24)
@@ -24,13 +25,13 @@ event_light_show_frequency_changed = Event()
 event_light_show_led_changed = Event()
 
 def light_show_frequency_changed(frequency):
-    print "Frequency set to ", frequency, "Hz"
+    print("Frequency set to ", frequency, "Hz")
 
 def light_show_started(show):
-    print "Light show ", show.id, " started"
+    print("Light show ", show.id, " started")
 
 def light_show_completed(show):
-    print "Light show ", show.id, " completed"
+    print("Light show ", show.id, " completed")
 
 def light_show_mask_changed(m):
     print(m)
@@ -69,7 +70,11 @@ class LightShow:
     def pretty_description(self):
         return str(self.id) + " (" + self.name + ")"
 
-
+class Led:
+    def __init__(self, id, on):
+        self.id = id
+        self.on = on
+    
 light_show_list = [
     LightShow(LIGHT_SHOW.OFF, "OFF", "All Off"),
     LightShow(LIGHT_SHOW.ALL_ON, "ON", "All On"),
@@ -96,16 +101,52 @@ def get_light_show(id):
 def get_light_shows():
     return [show for show in light_show_list if not show.system]
 
+def get_led(led_index):
+    if led_index >= len(leds) or led_index < 0:
+        return None
+    m = 0x01 < led_index
+    on = (m & led_mask) > 0
+    return Led(led_index, on)
 
+def get_leds():
+    arr = []
+    m = 0x01
+    for i in range(0, len(leds)):
+        on = (m & led_mask) > 0
+        led = Led(i, on)
+        arr.append(led)
+        m = m << 1
+    return arr
+
+def turn_led_off(led_index):
+    global led_mask
+    if led_index >= len(leds) or led_index < 0:
+        return None
+    led = leds[led_index]
+    led_mask &= (0x01 << led_index) ^ 0xFF
+    event_light_show_led_changed(led_mask)
+    led.off()
+    return Led(led_index, False)
+
+def turn_led_on(led_index):
+    global led_mask
+    if led_index >= len(leds) or led_index < 0:
+        return None
+    led = leds[led_index]
+    led_mask |= (0x01 << led_index)
+    event_light_show_led_changed(led_mask)
+    led.on()
+    return Led(led_index, True)
+    
 def litup(mask):
     global led_mask
-    for index in xrange(0, len(leds)):
+    for index in range(0, len(leds)):
         single_led_mask = 0x01 << index
-	led = leds[index]
+        led = leds[index]
         if (mask & single_led_mask) > 0:
             led.on()
-	else:
-	    led.off()
+        else:
+            led.off()
     led_mask = mask
     event_light_show_led_changed(mask)
 
@@ -143,7 +184,7 @@ def light_show(show_id, pattern, number_repetitions):
     current_show_id = show_id
     num = 0
     while num < number_repetitions:
-	for index in xrange(0, len(pattern)):
+        for index in range(0, len(pattern)):
             if current_show_id != show_id:
                 event_light_show_completed(light_show_dict[show_id])
                 return
@@ -164,25 +205,22 @@ def led_show(show_id, led_index, on_time_min, on_time_max, off_time_min, off_tim
     off_time = uniform(off_time_min, off_time_max)
 
     while current_show_id == show_id:
-        led = leds[led_index]
-        led_mask |= (0x01 << led_index)
-        event_light_show_led_changed(led_mask)
-        led.on()
+        turn_led_on(led_index)
         sleep(on_time/frequency)
         if current_show_id != show_id:
             event_light_show_completed(light_show_dict[show_id])
             return
-        led_mask &= (0x01 << led_index) ^ 0xFF
-        event_light_show_led_changed(led_mask)
-        led.off()
+
+        turn_led_off(led_index)
         sleep(off_time/frequency)
     event_light_show_completed(light_show_dict[show_id])
-    
+
+
 
 def random_bitmask(on_probability):
     # compute a current bit mask, each bit/LED has a 75% change of being ON.
     mask = 0x00
-    for bitIndex in xrange(0,len(leds)):
+    for bitIndex in range(0,len(leds)):
         if random() <= on_probability:
             mask |= (0x01 << bitIndex)
     return mask
@@ -191,7 +229,7 @@ def random_bitmask(on_probability):
 def light_show_worker(light_show_id):
     FOREVER = 1000000000
 
-    if light_show_id == LIGHT_SHOW.OFF:
+    if light_show_id == LIGHT_SHOW.OFF or light_show_id == LIGHT_SHOW.MANUAL:
         light_show(light_show_id, [ 0x00 ], 1)
 
     if light_show_id == LIGHT_SHOW.ALL_ON:
@@ -228,7 +266,7 @@ def light_show_worker(light_show_id):
 
     if light_show_id == LIGHT_SHOW.RANDOM_3:
         event_light_show_started(light_show_dict[light_show_id])
-        for led_index in xrange(0,len(leds)):            
+        for led_index in range(0,len(leds)):            
             t = threading.Thread(target=led_show, args=(light_show_id, led_index, 5, 10, 1, 2))
             t.start()
             
