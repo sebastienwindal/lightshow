@@ -101,6 +101,13 @@ def get_light_show(id):
 def get_light_shows():
     return [show for show in light_show_list if not show.system]
 
+def get_led_mask():
+    return led_mask
+
+def set_led_mask(mask):
+    litup(mask)    
+    return mask
+
 def get_led(led_index):
     if led_index >= len(leds) or led_index < 0:
         return None

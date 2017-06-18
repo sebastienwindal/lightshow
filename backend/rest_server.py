@@ -98,3 +98,15 @@ def led_on(led_id):
     if led == None:
         abort(404)
     return jsonify(led)
+
+@server.route("/led_mask", methods=['GET'])
+def get_led_mask():
+    mask = led_control.get_led_mask()
+    return jsonify({ 'led_mask': mask })
+
+@server.route("/led_mask/<mask>", methods=['PUT'])
+def set_led_mask(mask):
+    m = int(mask)
+    maskres = led_control.set_led_mask(m)
+    return jsonify({ 'led_mask': maskres })
+
