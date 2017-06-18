@@ -61,11 +61,12 @@ class LIGHT_SHOW(object):
 LIGHT_SHOW = LIGHT_SHOW()
 
 class LightShow:
-    def __init__(self, id, name = None, description = None, system = False):
+    def __init__(self, id, name = None, description = None, system = False, read_only = True):
         self.id = id
         self.name = name
         self.description = description
         self.system = system
+        self.read_only = read_only
 
     def pretty_description(self):
         return str(self.id) + " (" + self.name + ")"
@@ -92,6 +93,21 @@ light_show_dict = {}
 
 for show in light_show_list:
     light_show_dict[show.id] = show
+
+def delete_light_show(show):
+    light_show_list.remove(show)
+    del light_show_dict[show.id]
+
+def create_light_show(name, description, led_masks_list):
+    show_id = get_unique_light_show_id()
+    light_show = LightShow(show_id, name, description)
+    light_show_list.append(light_show)
+    light_show_dict[light_show.id] = light_show
+    return light_show
+
+def get_unique_light_show_id():
+    shows = sorted(light_show_list, key=lambda show: show.id, reverse=True)
+    return shows[0].id + 1
 
 def get_light_show(id):
     if id in light_show_dict: 
@@ -169,15 +185,20 @@ def top_button_pressed():
     start_light_show(next_show_id())
      
 def bottom_button_pressed():
-    global frequency
-    if frequency < 1:
-        frequency += .2
+    freq = frequency
+    if freq < 1:
+        freq += .2
     else:
-        frequency += 1
+        freq += 1
         
-    if frequency > 10:
-        frequency = 0.2
+    if freq > 10:
+        freq = 0.2
 
+    set_frequency(freq)
+
+def set_frequency(freq):
+    global frequency
+    frequency = freq
     event_light_show_frequency_changed(frequency)
     
 top_button.when_pressed = top_button_pressed 
