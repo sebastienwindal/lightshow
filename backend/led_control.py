@@ -3,26 +3,28 @@ from time import sleep
 from random import random
 from random import uniform
 import threading
+import json
 
-
-leds = [ LED(4), LED(17), LED(27), LED(22), LED(5), LED(6), LED(13), LED(16) ]
+leds = [ LED(4), LED(5), LED(6), LED(13), LED(16), LED(17), LED(27), LED(22) ]
 top_button = Button(24)
 bottom_button = Button(23)
 
-current_show = 0
+initial_show_id = 100
+current_show_id = initial_show_id
 frequency = 1 # Hz
 led_mask = 0
 
 class LIGHT_SHOW(object):
-    OFF = 0
-    ALL_ON = 1
-    ALL_BLINKING = 2
-    CYCLING_ONE = 3 # one at a time
-    CYCLING_TWO = 4 # two at a time
-    RANDOM_1 = 5
-    RANDOM_2 = 6
-    RANDOM_3 = 7
-    INIT = 100000
+    ALL_ON = 100
+    OFF = 101
+    ALL_BLINKING = 102
+    CYCLING_ONE = 103 # one at a time
+    CYCLING_TWO = 104 # two at a time
+    RANDOM_1 = 105
+    RANDOM_2 = 106
+    RANDOM_3 = 107
+    MANUAL = 1
+    INIT = 0
         
     def __setattr__(self, *_):
         pass
@@ -30,13 +32,15 @@ class LIGHT_SHOW(object):
 LIGHT_SHOW = LIGHT_SHOW()
 
 class LightShow:
-    def __init__(self, id, name = None, description = None):
+    def __init__(self, id, name = None, description = None, system = False):
         self.id = id
         self.name = name
         self.description = description
+        self.system = system
 
     def pretty_description(self):
         return str(self.id) + " (" + self.name + ")"
+
 
 light_show_list = [
     LightShow(LIGHT_SHOW.OFF, "OFF", "All Off"),
@@ -47,7 +51,8 @@ light_show_list = [
     LightShow(LIGHT_SHOW.RANDOM_1, "RAND 1", "Showing random LEDs, 50% change of being ON"),
     LightShow(LIGHT_SHOW.RANDOM_2, "RAND 2", "Random light show, 90% chance of LED being ON"),
     LightShow(LIGHT_SHOW.RANDOM_3, "RAND 3", "Random light show, natural strategy"),
-    LightShow(LIGHT_SHOW.INIT, "INIT")
+    LightShow(LIGHT_SHOW.INIT, "INIT", "Initialization LED sequence", True),
+    LightShow(LIGHT_SHOW.MANUAL, "MANUAL", "Light show is in manual mode", True)
 ]
 
 light_show_dict = {}
@@ -55,7 +60,17 @@ light_show_dict = {}
 for show in light_show_list:
     light_show_dict[show.id] = show
 
+def get_light_show(id):
+    if id in light_show_dict: 
+        return light_show_dict[id]
+    return None
+
+def get_light_shows():
+    return [show for show in light_show_list if not show.system]
+
+
 def litup(mask):
+    global led_mask
     for index in xrange(0, len(leds)):
         single_led_mask = 0x01 << index
 	led = leds[index]
@@ -66,13 +81,17 @@ def litup(mask):
     led_mask = mask
     light_show_mask_changed(mask)
 
-num_button_presses = 0
+def next_show_id():
+    next_show_id = current_show_id + 1
+    if next_show_id in light_show_dict:
+        if not light_show_dict[next_show_id].system:
+            return next_show_id
+    return initial_show_id
+    
 def top_button_pressed():
     print("top button pressed")
     global num_button_presses
-    num_button_presses = num_button_presses + 1
-    light_show_index = num_button_presses % 8   
-    start_light_show(light_show_index)
+    start_light_show(next_show_id())
  
 def bottom_button_pressed():
     global frequency
@@ -101,12 +120,12 @@ def light_show_completed(show):
 def light_show(show_id, pattern, number_repetitions):
     light_show_started(light_show_dict[show_id])
     
-    global current_show
-    current_show = show_id
+    global current_show_id
+    current_show_id = show_id
     num = 0
     while num < number_repetitions:
 	for index in xrange(0, len(pattern)):
-            if current_show != show_id:
+            if current_show_id != show_id:
                 light_show_completed(light_show_dict[show_id])
                 return
             litup(pattern[index])
@@ -118,26 +137,25 @@ def light_show_mask_changed(m):
     print(m)
     
 def led_show(show_id, led_index, on_time_min, on_time_max, off_time_min, off_time_max):
-    global current_show
+    global current_show_id
     global led_mask
 
-    current_show = show_id
+    current_show_id = show_id
     on_time = uniform(on_time_min, on_time_max)
     off_time = uniform(off_time_min, off_time_max)
 
-    while current_show == show_id:
+    while current_show_id == show_id:
         led = leds[led_index]
-        led.on()
         led_mask |= (0x01 << led_index)
         light_show_mask_changed(led_mask)
+        led.on()
         sleep(on_time/frequency)
-        if current_show != show_id:
+        if current_show_id != show_id:
             light_show_completed(light_show_dict[show_id])
             return
-        led.off()
-        led_mask ^= (0x01 << led_index) ^ 0xFF
-        
+        led_mask &= (0x01 << led_index) ^ 0xFF
         light_show_mask_changed(led_mask)
+        led.off()
         sleep(off_time/frequency)
     light_show_completed(light_show_dict[show_id])
     
@@ -197,4 +215,5 @@ def light_show_worker(light_show_id):
             
 def start_light_show(index):
     t = threading.Thread(target=light_show_worker, args=(index,))
+    t.daemon = True
     t.start()

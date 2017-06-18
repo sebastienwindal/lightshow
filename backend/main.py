@@ -3,6 +3,8 @@ from time import sleep
 import threading
 import led_control
 import lcd_control
+import rest_server
+
 
 frequency = 1
 mask = 0x00
@@ -12,7 +14,6 @@ def bottom_str():
   freq_str = str(frequency) + "Hz"
   for i in xrange(0, 8-len(freq_str)):
     freq_str += " "
-
   m = 0x80
   while m != 0:
     if mask & m == 0:
@@ -20,7 +21,6 @@ def bottom_str():
     else:
       freq_str += "1"
     m >>= 1
-
   return freq_str
 
   
@@ -51,6 +51,8 @@ def lcd_worker():
     lcd_control.lcd_string(light_show_str, lcd_control.LCD_LINE_1)
     sleep(0.05)
 
+def rest_worker():
+  rest_server.server.run()
     
 def main():
   lcd_control.lcd_init()
@@ -65,6 +67,10 @@ def main():
   t = threading.Thread(target=lcd_worker)
   t.daemon = True
   t.start()
+
+  server_thread = threading.Thread(target=rest_worker)
+  server_thread.daemon = True
+  server_thread.start()
   
   pause()
 
