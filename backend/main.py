@@ -32,15 +32,14 @@ def light_show_started(light_show):
 def light_show_completed(light_show):
   global light_show_str
   if light_show.id == led_control.LIGHT_SHOW.INIT:
-    light_show_str = "ready"
-    
+    light_show_str = "ready"   
 
 def light_show_frequency_changed(freq):
   global frequency
   frequency = freq
 
   
-def light_show_mask_changed(m):
+def light_show_led_changed(m):
   global mask
   mask = m
   
@@ -57,13 +56,13 @@ def rest_worker():
 def main():
   lcd_control.lcd_init()
 
-  # make the light blink a couple of time to signal we are ready
   led_control.start_light_show(led_control.LIGHT_SHOW.INIT)
-  led_control.light_show_started = light_show_started  
-  led_control.light_show_completed = light_show_completed
-  led_control.light_show_frequency_changed = light_show_frequency_changed
-  led_control.light_show_mask_changed = light_show_mask_changed
 
+  led_control.event_light_show_started.append(light_show_started)
+  led_control.event_light_show_completed.append(light_show_completed)
+  led_control.event_light_show_frequency_changed.append(light_show_frequency_changed)
+  led_control.event_light_show_led_changed.append(light_show_led_changed)
+  
   t = threading.Thread(target=lcd_worker)
   t.daemon = True
   t.start()
