@@ -35,7 +35,8 @@ def status_manual_requested():
 def frequency_requested(freq):
     print("frequency_requested")
 
-# light shows CRUD
+#######################################################################
+# light shows CRUD endpoint
 
 @server.route("/light_shows", methods=['GET','POST'])
 def light_shows():
@@ -80,8 +81,17 @@ def delete_light_show(light_show_id):
     led_control.delete_light_show(light_show)
 
 def create_light_show(name, description, led_masks_str):
-    led_masks_list = [int(e) if e.isdigit() else e for e in led_masks_str.split(',')]
     
+    if led_masks_str == None:
+        led_masks_str = ""
+    if name == None:
+        name = ""
+        
+    led_masks_list = []
+    for e in led_masks_str.split(','):
+        if e.isdigit():
+            led_masks_list.append(int(e))
+        
     if len(led_masks_list) == 0:
         abort(make_response("error - missing led_masks_list", 400))
     if len(name) == 0:
@@ -90,6 +100,8 @@ def create_light_show(name, description, led_masks_str):
     light_show = led_control.create_light_show(name, description, led_masks_list)
     return jsonify(light_show)
 
+
+#################################################
 # system control endpoints
 
 @server.route("/system", methods=['PUT'])
@@ -115,8 +127,8 @@ def put():
 
     return jsonify(dict)
 
-
-# led end points
+############################################
+# led endpoints
 
 @server.route("/leds", methods=['GET'])
 def led_index():
@@ -153,6 +165,9 @@ def led_on(led_id):
     if led == None:
         abort(make_response("error - LED not found", 404))
     return jsonify(led)
+
+###################################################
+# led mask
 
 @server.route("/led_mask", methods=['GET'])
 def get_led_mask():

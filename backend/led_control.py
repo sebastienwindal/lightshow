@@ -58,15 +58,25 @@ class LIGHT_SHOW(object):
     def __setattr__(self, *_):
         pass
 
+def random_bitmask(on_probability):
+    # compute a current bit mask, each bit/LED has a 75% change of being ON.
+    mask = 0x00
+    for bitIndex in range(0,len(leds)):
+        if random() <= on_probability:
+            mask |= (0x01 << bitIndex)
+    return mask
+
+
 LIGHT_SHOW = LIGHT_SHOW()
 
 class LightShow:
-    def __init__(self, id, name = None, description = None, system = False, read_only = True):
+    def __init__(self, id, name = None, description = None, led_mask_list = [], system = False, read_only = True):
         self.id = id
         self.name = name
         self.description = description
         self.system = system
         self.read_only = read_only
+        self.led_mask_list = led_mask_list
 
     def pretty_description(self):
         return str(self.id) + " (" + self.name + ")"
@@ -77,16 +87,17 @@ class Led:
         self.on = on
     
 light_show_list = [
-    LightShow(LIGHT_SHOW.OFF, "OFF", "All Off"),
-    LightShow(LIGHT_SHOW.ALL_ON, "ON", "All On"),
-    LightShow(LIGHT_SHOW.ALL_BLINKING, "BLINK ALL", "All LEDs blinking simultaneously"),
-    LightShow(LIGHT_SHOW.CYCLING_ONE, "INCR ONE", "Showing all LEDs in order, one at a time"),
-    LightShow(LIGHT_SHOW.CYCLING_TWO, "INCR TWO", "Showing all LEDs in order, two at a time"),
-    LightShow(LIGHT_SHOW.RANDOM_1, "RAND 1", "Showing random LEDs, 50% change of being ON"),
-    LightShow(LIGHT_SHOW.RANDOM_2, "RAND 2", "Random light show, 90% chance of LED being ON"),
+    LightShow(LIGHT_SHOW.OFF, "OFF", "All Off", [ 0 ]),
+    LightShow(LIGHT_SHOW.ALL_ON, "ON", "All On", [ 0xFF ]),
+    LightShow(LIGHT_SHOW.ALL_BLINKING, "BLINK ALL", "All LEDs blinking simultaneously", [ 0xFF, 0x00 ]),
+    LightShow(LIGHT_SHOW.CYCLING_ONE, "INCR ONE", "Showing all LEDs in order, one at a time", [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 ]),
+    LightShow(LIGHT_SHOW.CYCLING_TWO, "INCR TWO", "Showing all LEDs in order, two at a time", [ 0b0100000011000000 >> i for i in range(0,8) ]),
+    LightShow(LIGHT_SHOW.RANDOM_1, "RAND 1", "Showing random LEDs, 50% change of being ON", [ random_bitmask(0.5) for i in range(0,200)]),
+    LightShow(LIGHT_SHOW.RANDOM_2, "RAND 2", "Random light show, 90% chance of LED being ON", [ random_bitmask(0.9) for i\
+                                                                                                  in range(0,200)]),
     LightShow(LIGHT_SHOW.RANDOM_3, "RAND 3", "Random light show, natural strategy"),
-    LightShow(LIGHT_SHOW.INIT, "INIT", "Initialization LED sequence", True),
-    LightShow(LIGHT_SHOW.MANUAL, "MANUAL", "Light show is in manual mode", True)
+    LightShow(LIGHT_SHOW.INIT, "INIT", "Initialization LED sequence",  [0xFF, 0xFF, 0x00, 0xFF, 0x00], True),
+    LightShow(LIGHT_SHOW.MANUAL, "MANUAL", "Light show is in manual mode", [0x00], True)
 ]
 
 light_show_dict = {}
@@ -99,8 +110,9 @@ def delete_light_show(show):
     del light_show_dict[show.id]
 
 def create_light_show(name, description, led_masks_list):
+    print(led_masks_list)
     show_id = get_unique_light_show_id()
-    light_show = LightShow(show_id, name, description)
+    light_show = LightShow(show_id, name, description, led_masks_list)
     light_show_list.append(light_show)
     light_show_dict[light_show.id] = light_show
     return light_show
@@ -245,58 +257,25 @@ def led_show(show_id, led_index, on_time_min, on_time_max, off_time_min, off_tim
 
 
 
-def random_bitmask(on_probability):
-    # compute a current bit mask, each bit/LED has a 75% change of being ON.
-    mask = 0x00
-    for bitIndex in range(0,len(leds)):
-        if random() <= on_probability:
-            mask |= (0x01 << bitIndex)
-    return mask
-
-
 def light_show_worker(light_show_id):
     FOREVER = 1000000000
 
-    if light_show_id == LIGHT_SHOW.OFF or light_show_id == LIGHT_SHOW.MANUAL:
-        light_show(light_show_id, [ 0x00 ], 1)
+    show = get_light_show(light_show_id)
+    
+    if show.system:
+        light_show(light_show_id, show.led_mask_list, 1)
+        return
 
-    if light_show_id == LIGHT_SHOW.ALL_ON:
-        light_show(light_show_id, [ 0xFF ], 1)
-
-    if light_show_id == LIGHT_SHOW.INIT:
-        light_show(light_show_id, [0xFF, 0x00 ], 3)
-        
-    if light_show_id == LIGHT_SHOW.ALL_BLINKING:
-        light_show(light_show_id, [ 0xFF, 0x00 ], FOREVER)
-
-    if light_show_id == LIGHT_SHOW.CYCLING_ONE:
-        light_show(light_show_id, [ 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 ], FOREVER)
-
-    if light_show_id == LIGHT_SHOW.CYCLING_TWO:
-        arr = []
-        mask = 0x0003
-        while mask <= 0x00C0:
-            arr.append(mask)
-            mask = mask << 1
-        light_show(light_show_id, arr, FOREVER)
-
-    if light_show_id == LIGHT_SHOW.RANDOM_1:
-        arr = [ 0xFF ]
-        for i in range(600):
-            arr.append(random_bitmask(0.5))
-        light_show(light_show_id, arr, FOREVER)
-
-    if light_show_id == LIGHT_SHOW.RANDOM_2:
-        arr = [ 0xFF ]
-        for i in range(600):
-            arr.append(random_bitmask(0.9))
-        light_show(light_show_id, arr, FOREVER)
-
+    # this one is special
     if light_show_id == LIGHT_SHOW.RANDOM_3:
         event_light_show_started(light_show_dict[light_show_id])
-        for led_index in range(0,len(leds)):            
+        for led_index in range(0,len(leds)):
             t = threading.Thread(target=led_show, args=(light_show_id, led_index, 5, 10, 1, 2))
             t.start()
+        return
+
+    light_show(light_show_id, show.led_mask_list, FOREVER)
+    
             
 def start_light_show(index):
     t = threading.Thread(target=light_show_worker, args=(index,))
