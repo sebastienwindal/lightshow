@@ -106,13 +106,18 @@ for show in light_show_list:
     light_show_dict[show.id] = show
 
 def delete_light_show(show):
+    
+    if current_show_id == show.id:
+        # the current show is being deleted, move back to off
+        start_light_show(LIGHT_SHOW.OFF)
+        
     light_show_list.remove(show)
     del light_show_dict[show.id]
 
 def create_light_show(name, description, led_masks_list):
     print(led_masks_list)
     show_id = get_unique_light_show_id()
-    light_show = LightShow(show_id, name, description, led_masks_list)
+    light_show = LightShow(show_id, name, description, led_masks_list, False, False)
     light_show_list.append(light_show)
     light_show_dict[light_show.id] = light_show
     return light_show
