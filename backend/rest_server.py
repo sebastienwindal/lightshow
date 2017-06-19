@@ -34,7 +34,9 @@ def status_manual_requested():
     print("rest_status_manual_requested")
 def frequency_requested(freq):
     print("frequency_requested")
-
+def light_show_start_requested(show_id):
+    print("light_show_start_requested")
+    
 #######################################################################
 # light shows CRUD endpoint
 
@@ -80,8 +82,7 @@ def delete_light_show(light_show_id):
         return
     led_control.delete_light_show(light_show)
 
-def create_light_show(name, description, led_masks_str):
-    
+def create_light_show(name, description, led_masks_str):   
     if led_masks_str == None:
         led_masks_str = ""
     if name == None:
@@ -125,6 +126,13 @@ def put():
     except (TypeError,ValueError) as e:
         pass
 
+    try:
+        light_show_id = int(request.args.get('light_show_id'))
+        light_show_start_requested(light_show_id)
+        dict["light_show_id"] = light_show_id
+    except (TypeError, ValueError) as e:
+        pass
+    
     return jsonify(dict)
 
 ############################################

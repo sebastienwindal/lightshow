@@ -58,6 +58,10 @@ def status_manual_request():
        
 def frequency_requested(freq):
   led_control.set_frequency(freq)
+
+def light_show_start_requested(show_id):
+  led_control.start_light_show(show_id)
+
   
 ####
 
@@ -85,6 +89,7 @@ def main():
   rest_server.status_off_requested = status_off_requested
   rest_server.status_manual_requested = status_manual_request
   rest_server.frequency_requested = frequency_requested
+  rest_server.light_show_start_requested = light_show_start_requested
   
   t = threading.Thread(target=lcd_worker)
   t.daemon = True
