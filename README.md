@@ -1,6 +1,8 @@
 # lightshow
 
-A fun little home project.
+A fun little "light show" home project.
+
+![the result](hardwareresult.jpg)
 
 On the hardware side this consists of:
 * Raspberry pi zero. [$26.00](https://www.amazon.com/Raspberry-Pi-Zero-Wireless-Official/dp/B06XD18H6K/ref=sr_1_7?s=electronics&ie=UTF8&qid=1497980214&sr=1-7&keywords=pi+zero)
@@ -15,5 +17,3 @@ On the software side:
 * Python REST server using Flask
 * Python Socket.IO for push notifications
 * an iOS app to control the light show remotely.
-
-![the result](hardwareresult.jpg)
