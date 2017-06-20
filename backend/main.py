@@ -32,9 +32,8 @@ def light_show_started(light_show):
   
 def light_show_completed(light_show):
   global light_show_str
-  if light_show.id == led_control.LIGHT_SHOW.INIT:
-    light_show_str = "ready"   
-
+  print(".")
+  
 def light_show_frequency_changed(freq):
   global frequency
   frequency = freq
@@ -43,26 +42,6 @@ def light_show_led_changed(m):
   global mask
   mask = m
 
-#####################################
-# REST server callback overrides
-
-def status_off_requested():
-  off_light_show = led_control.get_light_show(led_control.LIGHT_SHOW.OFF)
-  if off_light_show != None:
-    led_control.start_light_show(off_light_show.id)
-
-def status_manual_request():
-  manual_light_show = led_control.get_light_show(led_control.LIGHT_SHOW.MANUAL)
-  if manual_light_show != None:
-    led_control.start_light_show(manual_light_show.id)
-       
-def frequency_requested(freq):
-  led_control.set_frequency(freq)
-
-def light_show_start_requested(show_id):
-  led_control.start_light_show(show_id)
-
-  
 ####
 
 def lcd_worker():
@@ -73,23 +52,18 @@ def lcd_worker():
 
     
 def rest_worker():
-  rest_server.server.run()
+  rest_server.server.run(host="0.0.0.0")
 
   
 def main():
   lcd_control.lcd_init()
-
-  led_control.start_light_show(led_control.LIGHT_SHOW.INIT)
 
   led_control.event_light_show_started.append(light_show_started)
   led_control.event_light_show_completed.append(light_show_completed)
   led_control.event_light_show_frequency_changed.append(light_show_frequency_changed)
   led_control.event_light_show_led_changed.append(light_show_led_changed)
 
-  rest_server.status_off_requested = status_off_requested
-  rest_server.status_manual_requested = status_manual_request
-  rest_server.frequency_requested = frequency_requested
-  rest_server.light_show_start_requested = light_show_start_requested
+  led_control.start()
   
   t = threading.Thread(target=lcd_worker)
   t.daemon = True

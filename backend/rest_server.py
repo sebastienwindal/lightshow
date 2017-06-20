@@ -20,22 +20,26 @@ class MyJSONEncoder(JSONEncoder):
                 status = "on"
             return {
                 'id': obj.id,
-                'status': status
+                'status': status,
+                'color': obj.color
+            }
+        if isinstance(obj, led_control.System):
+            return {
+                'current_light_show_id': obj.current_light_show_id,
+                'frequency': obj.frequency,
+                'status': obj.status_str()
             }
         return super(MyJSONEncoder, self).default(obj)
 
+    
 server = Flask("Light Show")
 server.json_encoder = MyJSONEncoder
 
-#callbacks methods and events
-def status_off_requested():
-    print("rest_status_off_requested")
-def status_manual_requested():
-    print("rest_status_manual_requested")
-def frequency_requested(freq):
-    print("frequency_requested")
-def light_show_start_requested(show_id):
-    print("light_show_start_requested")
+
+def abort_if_not_ready():
+    system = led_control.get_system()
+    if not system.is_ready():
+        abort(make_response("System is initializing. try again in a couple seconds.", 503))
     
 #######################################################################
 # light shows CRUD endpoint
@@ -45,12 +49,15 @@ def light_shows():
     if request.method == 'GET':
         return get_light_shows()
     if request.method == 'POST':
+        abort_if_not_ready()
         name = request.args.get('name')
         description = request.args.get('description')
         led_masks_str = request.args.get('led_masks_list')
         return create_light_show(name, description, led_masks_str)
         
 def get_light_shows():
+    abort_if_not_ready()
+              
     shows = led_control.get_light_shows()
     sorted_shows = sorted(shows, key=lambda show: show.id)
     json_list = jsonify(sorted_shows)
@@ -62,6 +69,7 @@ def light_show(light_show_id):
         return get_light_show(light_show_id)
 
     if request.method == 'DELETE':
+        abort_if_not_ready()
         delete_light_show(light_show_id)
         return
     
@@ -105,35 +113,37 @@ def create_light_show(name, description, led_masks_str):
 #################################################
 # system control endpoints
 
-@server.route("/system", methods=['PUT'])
-def put():
-    state = request.args.get('state')
-
-    dict = {}
+@server.route("/system", methods=['PUT', 'GET'])
+def system():
+    if request.method == 'GET':
+        return system_get()
+    if request.method == 'PUT':
+        return system_put()
     
-    if state == "off":
-        status_off_requested()
-        dict["status"] = "off"
-
-    if state == "manual":
-        status_manual_requested()
-        dict["state"] = "manual"
-        
+def system_get():
+    return jsonify(led_control.get_system())
+    
+def system_put():
+    abort_if_not_ready()
+    system = led_control.get_system()
+    status = request.args.get('status')
+    system.set_status_str(status)
+            
     try:
         frequency = float(request.args.get('frequency'))
-        frequency_requested(frequency)
-        dict["frequency"] = frequency
+        system.frequency = frequency
     except (TypeError,ValueError) as e:
         pass
 
     try:
-        light_show_id = int(request.args.get('light_show_id'))
-        light_show_start_requested(light_show_id)
-        dict["light_show_id"] = light_show_id
+        current_light_show_id = int(request.args.get('current_light_show_id'))
+        system.current_light_show_id = current_light_show_id
     except (TypeError, ValueError) as e:
         pass
+
+    led_control.set_system(system)
     
-    return jsonify(dict)
+    return jsonify(system)
 
 ############################################
 # led endpoints
@@ -145,6 +155,8 @@ def led_index():
 
 @server.route("/leds/<led_id>", methods=['GET'])
 def led_get(led_id):
+    abort_if_not_ready()
+    
     id = int(led_id)
     led = led_control.get_led(id)
     if led == None:
@@ -153,6 +165,8 @@ def led_get(led_id):
 
 @server.route("/leds/<led_id>", methods = ['PUT'])
 def update_led(led_id):
+    abort_if_not_ready()
+    
     state = request.args.get('state')
     if state == "on":
         return led_on(led_id)
@@ -184,6 +198,8 @@ def get_led_mask():
 
 @server.route("/led_mask/<mask>", methods=['PUT'])
 def set_led_mask(mask):
+    abort_if_not_ready()
+    
     m = int(mask)
     maskres = led_control.set_led_mask(m)
     return jsonify({ 'led_mask': maskres })
