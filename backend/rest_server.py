@@ -4,6 +4,8 @@ import json
 import string
 import random
 import led_control
+import socketio
+import eventlet
 
 
 class MyJSONEncoder(JSONEncoder):
@@ -31,10 +33,17 @@ class MyJSONEncoder(JSONEncoder):
             }
         return super(MyJSONEncoder, self).default(obj)
 
-    
-server = Flask("Light Show")
-server.json_encoder = MyJSONEncoder
+sio = socketio.Server()    
+app = Flask("LightShow")
+app.json_encoder = MyJSONEncoder
 
+def start_web_server():
+    global app
+    #    rest_server.server.run(host="0.0.0.0")
+
+    # deploy as an eventlet WSGI server
+    app = socketio.Middleware(sio, app)
+    eventlet.wsgi.server(eventlet.listen(('', 5000)), app)
 
 def abort_if_not_ready():
     system = led_control.get_system()
@@ -44,7 +53,7 @@ def abort_if_not_ready():
 #######################################################################
 # light shows CRUD endpoint
 
-@server.route("/light_shows", methods=['GET','POST'])
+@app.route("/light_shows", methods=['GET','POST'])
 def light_shows():
     if request.method == 'GET':
         return get_light_shows()
@@ -63,7 +72,7 @@ def get_light_shows():
     json_list = jsonify(sorted_shows)
     return json_list
 
-@server.route("/light_shows/<light_show_id>", methods=['GET','DELETE'])
+@app.route("/light_shows/<light_show_id>", methods=['GET','DELETE'])
 def light_show(light_show_id):
     if request.method == 'GET':
         return get_light_show(light_show_id)
@@ -113,7 +122,7 @@ def create_light_show(name, description, led_masks_str):
 #################################################
 # system control endpoints
 
-@server.route("/system", methods=['PUT', 'GET'])
+@app.route("/system", methods=['PUT', 'GET'])
 def system():
     if request.method == 'GET':
         return system_get()
@@ -126,17 +135,20 @@ def system_get():
 def system_put():
     abort_if_not_ready()
     system = led_control.get_system()
-    status = request.args.get('status')
+
+    json = request.get_json()
+    
+    status = json['status']
     system.set_status_str(status)
-            
+    
     try:
-        frequency = float(request.args.get('frequency'))
+        frequency = float(json['frequency'])
         system.frequency = frequency
     except (TypeError,ValueError) as e:
         pass
 
     try:
-        current_light_show_id = int(request.args.get('current_light_show_id'))
+        current_light_show_id = int(json['current_light_show_id'])
         system.current_light_show_id = current_light_show_id
     except (TypeError, ValueError) as e:
         pass
@@ -148,12 +160,12 @@ def system_put():
 ############################################
 # led endpoints
 
-@server.route("/leds", methods=['GET'])
+@app.route("/leds", methods=['GET'])
 def led_index():
     leds = led_control.get_leds()
     return jsonify(leds)
 
-@server.route("/leds/<led_id>", methods=['GET'])
+@app.route("/leds/<led_id>", methods=['GET'])
 def led_get(led_id):
     abort_if_not_ready()
     
@@ -163,11 +175,13 @@ def led_get(led_id):
         abort(make_response("error - LED not found", 404))
     return jsonify(led)
 
-@server.route("/leds/<led_id>", methods = ['PUT'])
+@app.route("/leds/<led_id>", methods = ['PUT'])
 def update_led(led_id):
     abort_if_not_ready()
-    
-    state = request.args.get('state')
+
+    json = request.get_json()
+    state = json['status']
+
     if state == "on":
         return led_on(led_id)
     if state == "off":
@@ -191,15 +205,35 @@ def led_on(led_id):
 ###################################################
 # led mask
 
-@server.route("/led_mask", methods=['GET'])
+@app.route("/led_mask", methods=['GET'])
 def get_led_mask():
     mask = led_control.get_led_mask()
     return jsonify({ 'led_mask': mask })
 
-@server.route("/led_mask/<mask>", methods=['PUT'])
+@app.route("/led_mask/<mask>", methods=['PUT'])
 def set_led_mask(mask):
     abort_if_not_ready()
     
     m = int(mask)
     maskres = led_control.set_led_mask(m)
     return jsonify({ 'led_mask': maskres })
+
+
+
+###############################################3############
+# web sockets
+
+@sio.on('connect')
+def connect(sid, environ):
+    print('connect ', sid)
+
+@sio.on('my message')
+def message(sid, data):
+    print('message ', data)
+
+@sio.on('disconnect')
+def disconnect(sid):
+    print('disconnect ', sid)
+
+def test_emit():
+    sio.emit('led_changed')

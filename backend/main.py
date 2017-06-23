@@ -41,6 +41,7 @@ def light_show_frequency_changed(freq):
 def light_show_led_changed(m):
   global mask
   mask = m
+  rest_server.test_emit()
 
 ####
 
@@ -52,8 +53,7 @@ def lcd_worker():
 
     
 def rest_worker():
-  rest_server.server.run(host="0.0.0.0")
-
+  rest_server.start_web_server()
   
 def main():
   lcd_control.lcd_init()
