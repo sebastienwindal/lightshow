@@ -4,8 +4,6 @@ import json
 import string
 import random
 import led_control
-import socketio
-import eventlet
 
 
 class MyJSONEncoder(JSONEncoder):
@@ -23,7 +21,8 @@ class MyJSONEncoder(JSONEncoder):
             return {
                 'id': obj.id,
                 'status': status,
-                'color': obj.color
+                'color': obj.color,
+                'hex_color': obj.hex_color
             }
         if isinstance(obj, led_control.System):
             return {
@@ -33,18 +32,15 @@ class MyJSONEncoder(JSONEncoder):
             }
         return super(MyJSONEncoder, self).default(obj)
 
-sio = socketio.Server()    
+
 app = Flask("LightShow")
 app.json_encoder = MyJSONEncoder
 
+        
 def start_web_server():
     global app
-    #    rest_server.server.run(host="0.0.0.0")
-
-    # deploy as an eventlet WSGI server
-    app = socketio.Middleware(sio, app)
-    eventlet.wsgi.server(eventlet.listen(('', 5000)), app)
-
+    app.run(host="0.0.0.0")
+    
 def abort_if_not_ready():
     system = led_control.get_system()
     if not system.is_ready():
@@ -157,6 +153,7 @@ def system_put():
     
     return jsonify(system)
 
+
 ############################################
 # led endpoints
 
@@ -217,23 +214,3 @@ def set_led_mask(mask):
     m = int(mask)
     maskres = led_control.set_led_mask(m)
     return jsonify({ 'led_mask': maskres })
-
-
-
-###############################################3############
-# web sockets
-
-@sio.on('connect')
-def connect(sid, environ):
-    print('connect ', sid)
-
-@sio.on('my message')
-def message(sid, data):
-    print('message ', data)
-
-@sio.on('disconnect')
-def disconnect(sid):
-    print('disconnect ', sid)
-
-def test_emit():
-    sio.emit('led_changed')

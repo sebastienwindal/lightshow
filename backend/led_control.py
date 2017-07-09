@@ -1,7 +1,6 @@
 from gpiozero import LED, Button
 from time import sleep
-from random import random
-from random import uniform
+from random import random,uniform
 import copy
 import threading
 import json
@@ -40,6 +39,7 @@ event_light_show_started = Event()
 event_light_show_completed = Event()
 event_light_show_frequency_changed = Event()
 event_light_show_led_changed = Event()
+event_light_show_single_led_changed = Event()
 event_system_changed = Event()
 
 # light show definitions
@@ -67,11 +67,12 @@ class LightShow:
         return str(self.id) + " (" + self.name + ")"
 
 class Led:
-    def __init__(self, id, gpioID, on, color=None):
+    def __init__(self, id, gpioID, on, color=None, hex_color=None):
         self.id = id
         self.gpioID = gpioID
         self.on = on
         self.color = color
+        self.hex_color = hex_color
         self.LED = LED(self.gpioID)
 
 class System:
@@ -148,16 +149,17 @@ event_light_show_started.append(light_show_started)
 event_light_show_completed.append(light_show_completed)
 event_light_show_frequency_changed.append(light_show_frequency_changed)
 event_light_show_led_changed.append(light_show_mask_changed)
-    
+
+
 leds = [
-    Led(0, 4, False, "red"),
-    Led(1, 5, False, "green"),
-    Led(2, 6, False, "blue"),
-    Led(3, 13, False, "yellow"),
-    Led(4, 16, False, "cool white"),
-    Led(5, 17, False, "pink"),
-    Led(6, 27, False, "warm white"),
-    Led(7, 22, False, "purple")
+    Led(0, 4, False, "red", 0xFFFF0000),
+    Led(1, 5, False, "green", 0xFF00FF00),
+    Led(2, 6, False, "blue", 0xFF0000FF),
+    Led(3, 13, False, "yellow", 0xFFFFFF00),
+    Led(4, 16, False, "cool white", 0xFFFFFFFF),
+    Led(5, 17, False, "pink", 0xFFFF1493),
+    Led(6, 27, False, "warm white", 0xFFFFF4E5),
+    Led(7, 22, False, "purple", 0xFF8A2BE2)
 ]
 
         
@@ -236,6 +238,7 @@ def turn_led_off(led_index):
     event_light_show_led_changed(led_mask)
     led.LED.off()
     led.on = False
+    event_light_show_single_led_changed(led)
     return led
 
 def turn_led_on(led_index):
@@ -247,6 +250,7 @@ def turn_led_on(led_index):
     event_light_show_led_changed(led_mask)
     led.LED.on()
     led.on = True
+    event_light_show_single_led_changed(led)
     return led
     
 def litup(mask):
@@ -260,6 +264,7 @@ def litup(mask):
         else:
             led.LED.off()
             led.on = False
+        event_light_show_single_led_changed(led)
     led_mask = mask
     event_light_show_led_changed(mask)
 
@@ -348,6 +353,7 @@ def light_show_worker(light_show_id):
     
             
 def start_light_show(index):
+    print("start_light_show")
     t = threading.Thread(target=light_show_worker, args=(index,))
     t.daemon = True
     t.start()

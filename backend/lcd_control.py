@@ -108,29 +108,3 @@ def lcd_string(message,line):
 
 def lcd_clear():
   lcd_byte(0x01, LCD_CMD)  
-    
-#def main():
-  # Main program block
-
-  # Initialise display
-#  lcd_init()
-
-  #while True:
-
-    # Send some test
-    #lcd_string("RPiSpy         <",LCD_LINE_1)
-    #lcd_string("I2C LCD        <",LCD_LINE_2)
-
-    #time.sleep(3)
-  
-    # Send some more text
-    #lcd_string("> Hello Scott",LCD_LINE_1)
-    #lcd_string("> GO SCOTLAND!",LCD_LINE_2)
-
-    #time.sleep(3)
-
-
-#  lcd_string("> Hello Scott",LCD_LINE_1)
-#  lcd_string("> GO SCOTLAND!",LCD_LINE_2)
-
-#  pause()

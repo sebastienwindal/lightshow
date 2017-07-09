@@ -27,6 +27,7 @@ def bottom_str():
 # LED events
   
 def light_show_started(light_show):
+  print("main: light_show_started")
   global light_show_str
   light_show_str = light_show.pretty_description()
   
@@ -41,7 +42,6 @@ def light_show_frequency_changed(freq):
 def light_show_led_changed(m):
   global mask
   mask = m
-  rest_server.test_emit()
 
 ####
 
@@ -62,7 +62,6 @@ def main():
   led_control.event_light_show_completed.append(light_show_completed)
   led_control.event_light_show_frequency_changed.append(light_show_frequency_changed)
   led_control.event_light_show_led_changed.append(light_show_led_changed)
-
   led_control.start()
   
   t = threading.Thread(target=lcd_worker)
@@ -78,6 +77,7 @@ def main():
   
 if __name__ == '__main__':
   try:
+
     main()
   except KeyboardInterrupt:
     pass
